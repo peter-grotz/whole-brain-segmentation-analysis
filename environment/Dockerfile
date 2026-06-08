@@ -24,4 +24,7 @@ RUN pip3 install -U --no-cache-dir \
 RUN pip3 install --no-cache-dir matplotlib
 
 COPY postInstall /
-RUN /postInstall
+# Invoke via `bash` rather than executing directly: Code Ocean's git sync does
+# not reliably preserve the file's executable bit, so `RUN /postInstall` fails
+# with "Permission denied" (exit 126). `bash /postInstall` is mode-independent.
+RUN bash /postInstall
