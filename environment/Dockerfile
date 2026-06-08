@@ -31,6 +31,28 @@ RUN pip3 install -U --no-cache-dir \
 # (already present), so --no-deps is safe and keeps scyjava untouched.
 RUN pip3 install --no-cache-dir --force-reinstall --no-deps 'jgo==1.0.6'
 
+# Seed the jzy3d 2.2.1 artifacts (captured from a known-good resolve) into the local
+# Maven repo, then pre-warm the full Fiji/SNT/mobie dependency cache at build time.
+# Rationale: every run otherwise re-downloads the whole Fiji tree, and the small
+# maven.jzy3d.org server rate-limits us (HTTP 429: "Too Many Requests"), which is what
+# was blocking the run after the version pin. Baking the cache into the image means
+# build AND runtime resolve from local disk -- jzy3d.org is never contacted -- and JVM
+# startup is much faster. The jzy3d seed avoids hitting the throttled server even at build.
+COPY jzy3d-m2-seed.tar.gz /tmp/jzy3d-m2-seed.tar.gz
+RUN mkdir -p /root/.m2/repository \
+    && tar xzf /tmp/jzy3d-m2-seed.tar.gz -C /root/.m2/repository \
+    && rm /tmp/jzy3d-m2-seed.tar.gz \
+    && printf '%s\n' \
+        '<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">' \
+        '  <profiles><profile><id>jzy3d</id>' \
+        '    <repositories><repository><id>jzy3d-releases</id><url>https://maven.jzy3d.org/releases</url>' \
+        '      <releases><enabled>true</enabled></releases><snapshots><enabled>false</enabled></snapshots>' \
+        '    </repository></repositories>' \
+        '  </profile></profiles>' \
+        '  <activeProfiles><activeProfile>jzy3d</activeProfile></activeProfiles>' \
+        '</settings>' > /root/.m2/settings.xml \
+    && JAVA_HOME=/opt/conda/jre python -c "import scyjava.config as c; c.add_repositories({'jzy3d-releases': 'https://maven.jzy3d.org/releases'}); import neuron_tracing_utils.util.java; import scyjava; scyjava.start_jvm(); print('PREWARM_OK')"
+
 # Plotting stack for the vendored single-run figure stage (code/figures/).
 # numpy/pandas already come in via neuron-tracing-utils; matplotlib does not.
 RUN pip3 install --no-cache-dir matplotlib
