@@ -1,0 +1,14 @@
+# Local Docker test artifacts (not part of the capsule)
+/run_local.sh
+/logs/
+/results/
+/scratch/
+/data/
+
+# Editor / OS cruft
+code/.vscode/
+.DS_Store
+**/.DS_Store
+
+# Claude Code local config (not part of capsule)
+.claude/

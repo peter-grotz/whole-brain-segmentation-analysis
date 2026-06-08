@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+
+set -ex
+
+setup_google_creds() {
+    # Create a temporary file
+    TEMP_CRED_FILE=$(mktemp --suffix=".json")
+    
+    # Ensure temporary file is removed on script exit or interrupt
+    trap "rm -f $TEMP_CRED_FILE" EXIT
+    
+    # Write the environment variable content to the temporary file
+    echo "${CUSTOM_KEY}" > "$TEMP_CRED_FILE"
+
+    export GOOGLE_APPLICATION_CREDENTIALS=$TEMP_CRED_FILE
+
+}
+
+setup_maven_repos() {
+    # Fiji 2.14.0 (bootstrapped by scyjava/jgo when the JVM starts) transitively
+    # depends on org.jzy3d:*:2.2.1. Those artifacts are NO LONGER served by
+    # scijava.public or Maven Central -- they live only on jzy3d's own Maven repo
+    # (https://maven.jzy3d.org/releases). Declare that repo in an always-active
+    # Maven profile so `mvn dependency:resolve` can find them. Without this the
+    # JVM bootstrap fails with "Could not find artifact org.jzy3d:...".
+    local M2_DIR="${HOME:-/root}/.m2"
+    mkdir -p "$M2_DIR"
+    cat > "$M2_DIR/settings.xml" <<'EOF'
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <profiles>
+    <profile>
+      <id>jzy3d</id>
+      <repositories>
+        <repository>
+          <id>jzy3d-releases</id>
+          <name>jzy3d releases</name>
+          <url>https://maven.jzy3d.org/releases</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>jzy3d-releases</id>
+          <url>https://maven.jzy3d.org/releases</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>false</enabled></snapshots>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
+  <activeProfiles>
+    <activeProfile>jzy3d</activeProfile>
+  </activeProfiles>
+</settings>
+EOF
+}
+
+generate_figures() {
+    # Single-run figures: a downstream visualization of the metric stages above,
+    # reading this run's /results and writing PNGs + CSVs to /results/figures.
+    # Each figure is best-effort: a plotting failure is logged but must NOT
+    # discard the expensive upstream GCS/JVM/S3 outputs, so we don't abort here.
+    export FIGURE_RUN_DIR="/results"
+    export FIGURE_OUT_DIR="/results/figures"
+    export PYTHONPATH="/code/figures${PYTHONPATH:+:$PYTHONPATH}"
+    # Optional: point at a merge-detection eval "errors" dir to fill the
+    # merge-events panel of the summary figure (left as "n/a" if unset).
+    # export FIGURE_MERGE_DIR="/data/.../errors"
+
+    local figure_scripts=(
+        make_794495_900k_visual_table.py
+        make_794495_900k_visual_table_compact.py
+        make_794495_900k_summary_panels.py
+    )
+    set +e
+    for s in "${figure_scripts[@]}"; do
+        echo "Generating figure: $s"
+        python "/code/figures/$s"
+        if [ $? -ne 0 ]; then
+            echo "WARNING: figure generation failed for $s; continuing." >&2
+        fi
+    done
+    set -e
+}
+
+setup_google_creds
+setup_maven_repos
+
+export JAVA_HOME=/opt/conda/jre
+export AWS_REGION=us-west-2
+
+python /code/prepare_swcs.py $2 "/results/input-swcs-flattened"
+
+python -m neuron_tracing_utils.analysis.partition_gt_errors --label-mask $1 --out-dir "/results/partitioned-swcs" --swc-dir "/results/input-swcs-flattened" --voxel-size $4
+python -m neuron_tracing_utils.analysis.get_error_intensities --output-dir "/results/intensity-npys" --swc-dir "/results/partitioned-swcs" --voxel-size "$4" --image-path "$5" --cache-size 8589934592
+
+python -m neuron_tracing_utils.util.ziputil --zip-url $3 --download-dir "/scratch/predicted-zips" --extract-dir "/scratch/predicted-swcs" --workers 30
+python -m neuron_tracing_utils.analysis.get_error_components --label-mask-path $1 --gt-swc-dir "/results/input-swcs-flattened" --seg-swc-dir "/scratch/predicted-swcs" --outdir "/results/predicted-components"  --voxel-size $4 --node-spacing $6 --workers 30
+python -m neuron_tracing_utils.analysis.make_merged_length_table --seg-components-dir "/results/predicted-components" --error-swc-dir "/results/partitioned-swcs" --csv-path "/results/merged-length.csv"
+
+generate_figures
