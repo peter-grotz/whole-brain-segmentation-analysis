@@ -14,10 +14,22 @@ COPY git-askpass /
 RUN mamba install -y \
         openjdk=8 \
         pyimagej==1.5.0 \
+        scyjava=1.10.0 \
     && mamba clean -ya
 
 RUN pip3 install -U --no-cache-dir \
     -e git+https://github.com/AllenNeuralDynamics/neuron-tracing-utils@2a4eae62500f3982ff8f42c0aaa56d5e7a9267a7#egg=neuron-tracing-utils
+
+# Pin the JVM-bootstrap stack to the versions this capsule was validated against.
+# neuron-tracing-utils depends on `jgo @ git+https://github.com/scijava/jgo` (unpinned),
+# which now floats to jgo 3.x -- a pure-Python Maven resolver that ignores ~/.m2/settings.xml,
+# over-resolves test-jar artifacts, and fetches a cjdk JRE without the `jar` tool, breaking
+# scyjava.start_jvm(). scyjava 1.10.0 + jgo 1.0.6 use the older `mvn`-based
+# jgo.resolve_dependencies path (reads settings.xml AND honors scyjava.config repositories),
+# which bootstraps Fiji 2.14 correctly. Re-pin jgo AFTER the editable install so it overrides
+# the git version (scyjava 1.10.0 is pinned above via conda). jgo 1.0.6 needs only psutil
+# (already present), so --no-deps is safe and keeps scyjava untouched.
+RUN pip3 install --no-cache-dir --force-reinstall --no-deps 'jgo==1.0.6'
 
 # Plotting stack for the vendored single-run figure stage (code/figures/).
 # numpy/pandas already come in via neuron-tracing-utils; matplotlib does not.
