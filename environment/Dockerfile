@@ -31,18 +31,47 @@ RUN pip3 install -U --no-cache-dir \
 # (already present), so --no-deps is safe and keeps scyjava untouched.
 RUN pip3 install --no-cache-dir --force-reinstall --no-deps 'jgo==1.0.6'
 
-# Seed the jzy3d 2.2.1 artifacts (captured from a known-good resolve) into the local
-# Maven repo, then pre-warm the full Fiji/SNT/mobie dependency cache at build time.
-# Rationale: every run otherwise re-downloads the whole Fiji tree, and the small
-# maven.jzy3d.org server rate-limits us (HTTP 429: "Too Many Requests"), which is what
-# was blocking the run after the version pin. Baking the cache into the image means
-# build AND runtime resolve from local disk -- jzy3d.org is never contacted -- and JVM
-# startup is much faster. The jzy3d seed avoids hitting the throttled server even at build.
-COPY jzy3d-m2-seed.tar.gz /tmp/jzy3d-m2-seed.tar.gz
-RUN mkdir -p /root/.m2/repository \
-    && tar xzf /tmp/jzy3d-m2-seed.tar.gz -C /root/.m2/repository \
-    && rm /tmp/jzy3d-m2-seed.tar.gz \
-    && printf '%s\n' \
+# Bake the Fiji Maven cache into the image so neither build nor runtime depends on the
+# rate-limited maven.jzy3d.org server (HTTP 429), which was blocking the run after the
+# version pin. Every run otherwise re-downloads the whole Fiji tree, and the small jzy3d
+# server throttles the burst. Strategy:
+#  (1) Gently fetch ONLY the jzy3d 2.2.1 artifacts (the sole deps that server hosts) one
+#      at a time with retry/backoff -- 17 spaced requests, nothing like the burst a full
+#      `mvn` resolve makes -- placing them as locally-installed artifacts (no
+#      _remote.repositories) so Maven uses them without ever contacting jzy3d.org.
+#  (2) Pre-warm the full Fiji/SNT/mobie cache via the real scyjava.start_jvm(): jzy3d
+#      comes from local disk, everything else from scijava.public (which does not throttle).
+# Result: /root/.m2 + /root/.jgo are baked into the image; runs resolve from local disk
+# (no 429 possible) and JVM startup is fast. Validated end-to-end in the pinned image.
+RUN base="https://maven.jzy3d.org/releases" \
+    && for f in \
+        org/jzy3d/jzy3d-all/2.2.1/jzy3d-all-2.2.1.pom \
+        org/jzy3d/jzy3d-core-awt/2.2.1/jzy3d-core-awt-2.2.1.jar \
+        org/jzy3d/jzy3d-core-awt/2.2.1/jzy3d-core-awt-2.2.1.pom \
+        org/jzy3d/jzy3d-core/2.2.1/jzy3d-core-2.2.1-tests.jar \
+        org/jzy3d/jzy3d-core/2.2.1/jzy3d-core-2.2.1.jar \
+        org/jzy3d/jzy3d-core/2.2.1/jzy3d-core-2.2.1.pom \
+        org/jzy3d/jzy3d-jdt-core/2.2.1/jzy3d-jdt-core-2.2.1.jar \
+        org/jzy3d/jzy3d-jdt-core/2.2.1/jzy3d-jdt-core-2.2.1.pom \
+        org/jzy3d/jzy3d-native-jogl-awt/2.2.1/jzy3d-native-jogl-awt-2.2.1.jar \
+        org/jzy3d/jzy3d-native-jogl-awt/2.2.1/jzy3d-native-jogl-awt-2.2.1.pom \
+        org/jzy3d/jzy3d-native-jogl-core/2.2.1/jzy3d-native-jogl-core-2.2.1-tests.jar \
+        org/jzy3d/jzy3d-native-jogl-core/2.2.1/jzy3d-native-jogl-core-2.2.1.jar \
+        org/jzy3d/jzy3d-native-jogl-core/2.2.1/jzy3d-native-jogl-core-2.2.1.pom \
+        org/jzy3d/jzy3d-native-jogl-swing/2.2.1/jzy3d-native-jogl-swing-2.2.1.jar \
+        org/jzy3d/jzy3d-native-jogl-swing/2.2.1/jzy3d-native-jogl-swing-2.2.1.pom \
+        org/jzy3d/jzy3d-tester/2.2.1/jzy3d-tester-2.2.1.jar \
+        org/jzy3d/jzy3d-tester/2.2.1/jzy3d-tester-2.2.1.pom \
+    ; do \
+        dest="/root/.m2/repository/$f"; mkdir -p "$(dirname "$dest")"; \
+        echo "jzy3d fetch: $f"; \
+        curl -fsSL --retry 6 --retry-delay 15 --retry-all-errors -o "$dest" "$base/$f" \
+            || { echo "FAILED to fetch $f"; exit 1; }; \
+        [ -s "$dest" ] || { echo "EMPTY artifact $f"; exit 1; }; \
+        sleep 2; \
+    done
+
+RUN printf '%s\n' \
         '<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">' \
         '  <profiles><profile><id>jzy3d</id>' \
         '    <repositories><repository><id>jzy3d-releases</id><url>https://maven.jzy3d.org/releases</url>' \
