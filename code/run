@@ -94,11 +94,15 @@ export AWS_REGION=us-west-2
 
 python /code/prepare_swcs.py $2 "/results/input-swcs-flattened"
 
-python -m neuron_tracing_utils.analysis.partition_gt_errors --label-mask $1 --out-dir "/results/partitioned-swcs" --swc-dir "/results/input-swcs-flattened" --voxel-size $4
-python -m neuron_tracing_utils.analysis.get_error_intensities --output-dir "/results/intensity-npys" --swc-dir "/results/partitioned-swcs" --voxel-size "$4" --image-path "$5" --cache-size 8589934592
+# neuron-tracing-utils modules are launched via jvm_repos.py instead of `python -m`
+# so the jzy3d Maven repo is registered before scyjava boots the JVM (Fiji 2.14
+# needs org.jzy3d:*:2.2.1, which scijava.public/Central no longer serve and jgo's
+# pure-Python resolver can't otherwise find).
+python /code/jvm_repos.py neuron_tracing_utils.analysis.partition_gt_errors --label-mask $1 --out-dir "/results/partitioned-swcs" --swc-dir "/results/input-swcs-flattened" --voxel-size $4
+python /code/jvm_repos.py neuron_tracing_utils.analysis.get_error_intensities --output-dir "/results/intensity-npys" --swc-dir "/results/partitioned-swcs" --voxel-size "$4" --image-path "$5" --cache-size 8589934592
 
-python -m neuron_tracing_utils.util.ziputil --zip-url $3 --download-dir "/scratch/predicted-zips" --extract-dir "/scratch/predicted-swcs" --workers 30
-python -m neuron_tracing_utils.analysis.get_error_components --label-mask-path $1 --gt-swc-dir "/results/input-swcs-flattened" --seg-swc-dir "/scratch/predicted-swcs" --outdir "/results/predicted-components"  --voxel-size $4 --node-spacing $6 --workers 30
-python -m neuron_tracing_utils.analysis.make_merged_length_table --seg-components-dir "/results/predicted-components" --error-swc-dir "/results/partitioned-swcs" --csv-path "/results/merged-length.csv"
+python /code/jvm_repos.py neuron_tracing_utils.util.ziputil --zip-url $3 --download-dir "/scratch/predicted-zips" --extract-dir "/scratch/predicted-swcs" --workers 30
+python /code/jvm_repos.py neuron_tracing_utils.analysis.get_error_components --label-mask-path $1 --gt-swc-dir "/results/input-swcs-flattened" --seg-swc-dir "/scratch/predicted-swcs" --outdir "/results/predicted-components"  --voxel-size $4 --node-spacing $6 --workers 30
+python /code/jvm_repos.py neuron_tracing_utils.analysis.make_merged_length_table --seg-components-dir "/results/predicted-components" --error-swc-dir "/results/partitioned-swcs" --csv-path "/results/merged-length.csv"
 
 generate_figures
