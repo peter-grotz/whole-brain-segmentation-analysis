@@ -1,5 +1,5 @@
 metadata_version: 1
-name: Whole-brain segmentation analysis
+name: Whole-brain segmentation analysis with results
 description: Capsule for quantification and visualization of errors in whole-brain
   neuron segmentation
 authors:

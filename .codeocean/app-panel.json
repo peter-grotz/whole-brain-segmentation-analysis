@@ -1,0 +1,42 @@
+{
+	"version": 1,
+	"parameters": [
+		{
+			"id": "69O5Sck6Qmb9Gd8G",
+			"name": "label_mask",
+			"type": "text",
+			"value_type": "string",
+			"required": true
+		},
+		{
+			"id": "QaeNlUAEqUwTUvHE",
+			"name": "ground_truth_swcs",
+			"type": "text",
+			"value_type": "string"
+		},
+		{
+			"id": "ySCrT1C5R8fRUkry",
+			"name": "predicted_swc_zips",
+			"type": "text",
+			"value_type": "string"
+		},
+		{
+			"id": "GJnyZDnaIXTC42Tz",
+			"name": "voxel_size",
+			"type": "text",
+			"value_type": "string"
+		},
+		{
+			"id": "y1JF7eXqXKZiHSHr",
+			"name": "zarr_path",
+			"type": "text",
+			"value_type": "string"
+		},
+		{
+			"id": "7IYDIH1WzXwJvGVu",
+			"name": "skel_node_spacing",
+			"type": "text",
+			"value_type": "string"
+		}
+	]
+}
