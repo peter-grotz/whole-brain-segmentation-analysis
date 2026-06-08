@@ -1,6 +1,4 @@
 metadata_version: 1
-name: Whole-brain segmentation analysis with results
+name: Whole-brain segmentation analysis with formatted results
 description: Capsule for quantification and visualization of errors in whole-brain
   neuron segmentation
-authors:
-- name: Cameron Arshadi
