@@ -109,7 +109,7 @@ generate_ng_skeletons() {
         return
     fi
     echo "Uploading precomputed skeleton layers to $s3_base/ ..."
-    aws s3 sync "$ng_out" "$s3_base/" --no-progress \
+    python /code/s3_upload.py "$ng_out" "$s3_base" \
         || echo "WARNING: NG skeleton S3 upload failed (check AWS write perms on aind-msma-morphology-data); layers remain in $ng_out." >&2
     echo "=== Neuroglancer link ==="
     cat "$ng_out/neuroglancer_link.txt" 2>/dev/null
@@ -119,12 +119,12 @@ generate_ng_skeletons() {
 upload_results() {
     # Mirror ALL of /results to S3 under segmentation_analysis/. Best-effort: a failure
     # (e.g. missing S3 write permission) is logged but must NOT abort the run; /results is
-    # still captured as the Code Ocean result asset. `aws s3 sync` only transfers new/changed
-    # files, so the ng_skeletons already pushed above are skipped here.
+    # still captured as the Code Ocean result asset. ng_skeletons is excluded here because
+    # generate_ng_skeletons already uploaded it (avoids re-uploading ~hundreds of MB).
     local s3_dest="s3://aind-msma-morphology-data/segmentation_analysis/${RUN_TAG}"
     echo "Uploading all results to $s3_dest/ ..."
     set +e
-    aws s3 sync /results "$s3_dest/" --no-progress \
+    python /code/s3_upload.py /results "$s3_dest" --exclude ng_skeletons \
         || echo "WARNING: results S3 upload to $s3_dest failed (check AWS write perms on aind-msma-morphology-data); results remain in /results." >&2
     set -e
 }
