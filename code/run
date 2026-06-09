@@ -95,7 +95,7 @@ generate_ng_skeletons() {
     local voxel="$1"
     local image="$2"
     local ng_out="/results/ng_skeletons"
-    local s3_base="s3://aind-msma-morphology-data/segmentation_analysis/ng_skeletons"
+    local s3_base="s3://aind-msma-morphology-data/segmentation_analysis/${RUN_TAG}/ng_skeletons"
     set +e
     python /code/make_ng_skeletons.py \
         --results-dir "/results" \
@@ -121,7 +121,7 @@ upload_results() {
     # (e.g. missing S3 write permission) is logged but must NOT abort the run; /results is
     # still captured as the Code Ocean result asset. `aws s3 sync` only transfers new/changed
     # files, so the ng_skeletons already pushed above are skipped here.
-    local s3_dest="s3://aind-msma-morphology-data/segmentation_analysis"
+    local s3_dest="s3://aind-msma-morphology-data/segmentation_analysis/${RUN_TAG}"
     echo "Uploading all results to $s3_dest/ ..."
     set +e
     aws s3 sync /results "$s3_dest/" --no-progress \
@@ -134,6 +134,18 @@ setup_maven_repos
 
 export JAVA_HOME=/opt/conda/jre
 export AWS_REGION=us-west-2
+
+# Unique per-run output subfolder so runs never overwrite each other under
+# segmentation_analysis/. Tag = sanitized label-mask (segmentation model) leaf + timestamp,
+# e.g. denoised.unet_tri_denoised_2370000_move_09_segment_09_it2_20260609_104500.
+RUN_TAG="$(date +%Y%m%d_%H%M%S)"
+_mask_leaf="$(basename "${1%/}" 2>/dev/null | tr -c 'A-Za-z0-9._-' '_')"
+_mask_leaf="${_mask_leaf%_}"   # drop trailing _ left by basename's newline
+if [ -n "$_mask_leaf" ] && [ "$_mask_leaf" != "_" ] && [ "$_mask_leaf" != "." ]; then
+    RUN_TAG="${_mask_leaf}_${RUN_TAG}"
+fi
+export RUN_TAG
+echo "Run output subfolder: segmentation_analysis/${RUN_TAG}/"
 
 python /code/prepare_swcs.py $2 "/results/input-swcs-flattened"
 
