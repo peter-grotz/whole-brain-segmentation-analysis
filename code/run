@@ -86,6 +86,36 @@ generate_figures() {
     set -e
 }
 
+generate_ng_skeletons() {
+    # Build Neuroglancer precomputed skeleton layers (in voxel space) from this run's SWCs
+    # -- correct(green)/omit(red), predicted fragments, and GT input -- then upload them to
+    # S3 so the emitted Neuroglancer link resolves. Best-effort: a failure here (e.g. missing
+    # S3 write permission) is logged but must NOT abort the run; the layers also remain in
+    # /results/ng_skeletons for manual upload. $1=voxel-size  $2=image (zarr) source.
+    local voxel="$1"
+    local image="$2"
+    local ng_out="/results/ng_skeletons"
+    local s3_base="s3://aind-msma-morphology-data/794495/ng_skeletons"
+    set +e
+    python /code/make_ng_skeletons.py \
+        --results-dir "/results" \
+        --out-dir "$ng_out" \
+        --voxel-size "$voxel" \
+        --image-source "$image" \
+        --s3-base "$s3_base"
+    if [ $? -ne 0 ]; then
+        echo "WARNING: NG skeleton generation failed; continuing." >&2
+        set -e
+        return
+    fi
+    echo "Uploading precomputed skeleton layers to $s3_base/ ..."
+    aws s3 sync "$ng_out" "$s3_base/" --no-progress \
+        || echo "WARNING: NG skeleton S3 upload failed (check AWS write perms on aind-msma-morphology-data); layers remain in $ng_out." >&2
+    echo "=== Neuroglancer link ==="
+    cat "$ng_out/neuroglancer_link.txt" 2>/dev/null
+    set -e
+}
+
 setup_google_creds
 setup_maven_repos
 
@@ -106,3 +136,4 @@ python /code/jvm_repos.py neuron_tracing_utils.analysis.get_error_components --l
 python /code/jvm_repos.py neuron_tracing_utils.analysis.make_merged_length_table --seg-components-dir "/results/predicted-components" --error-swc-dir "/results/partitioned-swcs" --csv-path "/results/merged-length.csv"
 
 generate_figures
+generate_ng_skeletons "$4" "$5"
