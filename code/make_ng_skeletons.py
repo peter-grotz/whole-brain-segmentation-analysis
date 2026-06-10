@@ -35,6 +35,7 @@ RESOLUTION_NM = [748.0, 748.0, 1000.0]          # x, y, z nm/voxel (matches refe
 SKELETON_TRANSFORM = [748.0, 0, 0, 0, 0, 748.0, 0, 0, 0, 0, 1000.0, 0]
 GREEN = "#2ca02c"
 RED = "#d62728"
+ORANGE = "#ff7f0e"   # misaligned (GT drifts off a continuous fragment)
 NG_HOST = "https://neuroglancer-demo.appspot.com/"
 
 
@@ -222,12 +223,15 @@ def main():
 
     seg_layers = []
 
-    # 1) correct + omit (physical um -> voxel); correct green, omit red
+    # 1) correct + omit + misaligned (physical um -> voxel)
+    #    correct = green, pure omit = red, misaligned = orange
     part = rdir / "partitioned-swcs"
     correct = build_items(part.glob("*_correct.swc"), lambda p: p.stem, voxel_size, False, 1)
     omit = build_items(part.glob("*_omit.swc"), lambda p: p.stem, voxel_size, False,
                        start_id=1 + len(correct))
-    co_items = correct + omit
+    misaligned = build_items(part.glob("*_misaligned.swc"), lambda p: p.stem, voxel_size, False,
+                             start_id=1 + len(correct) + len(omit))
+    co_items = correct + omit + misaligned
     if co_items:
         ids = write_layer(odir / "correct_omit.precomputed", co_items, volume_size)
         colors = {}
@@ -235,6 +239,8 @@ def main():
             colors[str(it["seg_id"])] = GREEN
         for it in omit:
             colors[str(it["seg_id"])] = RED
+        for it in misaligned:
+            colors[str(it["seg_id"])] = ORANGE
         seg_layers.append({"name": "correct_omit", "source": f"{base}/correct_omit.precomputed",
                            "segments": ids, "colors": colors})
 

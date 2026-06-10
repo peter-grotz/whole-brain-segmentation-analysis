@@ -129,6 +129,24 @@ upload_results() {
     set -e
 }
 
+compute_misalignment() {
+    # Split the GT "omit" length into misalignment (a continuous fragment runs through the
+    # zero gap -- bordered on both ends by the same segment id; GT just drifts off it) vs
+    # pure omit. Writes {neuron}_misaligned.swc + rewrites {neuron}_omit.swc to pure-omit in
+    # partitioned-swcs (so NG colors them green/red/orange), plus misalignment_metrics.csv.
+    # Reuses neuron-tracing-utils open_ts for identical labels (no JVM). Best-effort.
+    # $1 = label-mask (segmentation, same as partition)   $2 = voxel-size
+    set +e
+    python /code/misalignment_metrics.py \
+        --swc-dir "/results/input-swcs-flattened" \
+        --label-mask "$1" \
+        --partitioned-dir "/results/partitioned-swcs" \
+        --voxel-size "$2" \
+        --out-csv "/results/misalignment_metrics.csv" \
+        || echo "WARNING: misalignment metrics stage failed; continuing." >&2
+    set -e
+}
+
 setup_google_creds
 setup_maven_repos
 
@@ -160,6 +178,7 @@ python /code/jvm_repos.py neuron_tracing_utils.util.ziputil --zip-url $3 --downl
 python /code/jvm_repos.py neuron_tracing_utils.analysis.get_error_components --label-mask-path $1 --gt-swc-dir "/results/input-swcs-flattened" --seg-swc-dir "/scratch/predicted-swcs" --outdir "/results/predicted-components"  --voxel-size $4 --node-spacing $6 --workers 30
 python /code/jvm_repos.py neuron_tracing_utils.analysis.make_merged_length_table --seg-components-dir "/results/predicted-components" --error-swc-dir "/results/partitioned-swcs" --csv-path "/results/merged-length.csv"
 
+compute_misalignment "$1" "$4"
 generate_figures
 generate_ng_skeletons "$4" "$5"
 upload_results
