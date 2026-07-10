@@ -2,6 +2,14 @@
 	"version": 1,
 	"attached_datasets": [
 		{
+			"id": "1199cdbb-947d-4020-8526-4410a22a073f",
+			"mount": "exaSPIM_794495_reconstructions_refined_2026_07_09"
+		},
+		{
+			"id": "5eaffef8-ef2b-49ee-b534-7f1b21d49c9c",
+			"mount": "820994_voxel_fixed"
+		},
+		{
 			"id": "7a8af020-fa06-4acb-9127-d7fc5a535896",
 			"mount": "exaSPIM_718168_reconstructions_refined_2026_03_10"
 		},
