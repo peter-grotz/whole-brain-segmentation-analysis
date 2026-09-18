@@ -9,8 +9,13 @@ setup_google_creds() {
     # Ensure temporary file is removed on script exit or interrupt
     trap "rm -f $TEMP_CRED_FILE" EXIT
     
-    # Write the environment variable content to the temporary file
-    echo "${CUSTOM_KEY}" > "$TEMP_CRED_FILE"
+    # Write the credential to the temp file WITHOUT tracing it: the script runs
+    # under `set -x`, so a plain `echo "${CUSTOM_KEY}"` prints the private key
+    # into the run log (which ships inside the results asset). Silence tracing
+    # around the write.
+    { set +x; } 2>/dev/null
+    printf '%s' "${CUSTOM_KEY}" > "$TEMP_CRED_FILE"
+    set -x
 
     export GOOGLE_APPLICATION_CREDENTIALS=$TEMP_CRED_FILE
 
@@ -63,8 +68,11 @@ generate_figures() {
     # reading this run's /results and writing PNGs + CSVs to /results/figures.
     # Each figure is best-effort: a plotting failure is logged but must NOT
     # discard the expensive upstream GCS/JVM/S3 outputs, so we don't abort here.
+    # $1 = voxel-size (x,y,z), needed to align the GT topology with the
+    # physical-micron partitioned SWCs in the omit-gap characterization.
     export FIGURE_RUN_DIR="/results"
     export FIGURE_OUT_DIR="/results/figures"
+    export FIGURE_VOXEL_SIZE="$1"
     export PYTHONPATH="/code/figures${PYTHONPATH:+:$PYTHONPATH}"
     # Optional: point at a merge-detection eval "errors" dir to fill the
     # merge-events panel of the summary figure (left as "n/a" if unset).
@@ -74,6 +82,7 @@ generate_figures() {
         make_794495_900k_visual_table.py
         make_794495_900k_visual_table_compact.py
         make_794495_900k_summary_panels.py
+        make_omit_gap_characterization.py
     )
     set +e
     for s in "${figure_scripts[@]}"; do
@@ -179,6 +188,6 @@ python /code/jvm_repos.py neuron_tracing_utils.analysis.get_error_components --l
 python /code/jvm_repos.py neuron_tracing_utils.analysis.make_merged_length_table --seg-components-dir "/results/predicted-components" --error-swc-dir "/results/partitioned-swcs" --csv-path "/results/merged-length.csv"
 
 compute_misalignment "$1" "$4"
-generate_figures
+generate_figures "$4"
 generate_ng_skeletons "$4" "$5"
 upload_results
