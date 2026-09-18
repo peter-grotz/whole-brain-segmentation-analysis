@@ -19,8 +19,10 @@ from figure_config import RUN_DIR, OUT_DIR
 # otherwise that panel is drawn with zeros and annotated "n/a".
 _merge_dir_env = os.environ.get("FIGURE_MERGE_DIR")
 MERGE_DIR = Path(_merge_dir_env) if _merge_dir_env else None
-OUT_FIG = OUT_DIR / "794495_900k_summary_panels.png"
-OUT_CSV = OUT_DIR / "794495_900k_summary_panels_stats.csv"
+from figure_config import out_path, SAMPLE, CHECKPOINT, apply_house_style
+apply_house_style()
+OUT_FIG = out_path("summary_panels.png")
+OUT_CSV = out_path("summary_panels_stats.csv")
 
 
 def _load_merge_summary() -> tuple[dict, bool]:
@@ -119,7 +121,7 @@ def main() -> None:
     ax.bar([0], [mean_omit], bottom=[mean_correct], color="#d62728", width=0.6, label="Omit")
     ax.set_xlim(-0.8, 0.8)
     ax.set_ylim(0, 1.0)
-    ax.set_xticks([0], ["900k"])
+    ax.set_xticks([0], [CHECKPOINT])
     ax.set_ylabel("Mean proportion")
     ax.set_title("Mean correct and omit")
     ax.text(0, max(mean_correct - 0.04, 0.02), f"{mean_correct:.3f}", ha="center", va="top", color="white", fontsize=10, fontweight="bold")
@@ -148,7 +150,7 @@ def main() -> None:
     bp["boxes"][0].set_facecolor("#4c78a8")
     bp["boxes"][0].set_alpha(0.55)
     ax.set_xlim(0.4, 1.6)
-    ax.set_xticks([1], ["900k"])
+    ax.set_xticks([1], [CHECKPOINT])
     ax.set_ylabel("Predicted components per cell")
     ax.set_title("Fragments per cell")
     ax.grid(axis="y", alpha=0.2, linewidth=0.5)
@@ -160,7 +162,7 @@ def main() -> None:
     bp["boxes"][0].set_facecolor("#59a14f")
     bp["boxes"][0].set_alpha(0.55)
     ax.set_xlim(0.4, 1.6)
-    ax.set_xticks([1], ["900k"])
+    ax.set_xticks([1], [CHECKPOINT])
     ax.set_ylabel("Mean fragment length per cell (mm)")
     ax.set_title("Fragment length per cell")
     ax.grid(axis="y", alpha=0.2, linewidth=0.5)
@@ -182,7 +184,7 @@ def main() -> None:
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
-    fig.suptitle("794495 900k checkpoint summary", fontsize=20)
+    fig.suptitle(f"{SAMPLE} {CHECKPOINT} summary", fontsize=20)
     fig.savefig(OUT_FIG, dpi=220, bbox_inches="tight")
     plt.close(fig)
     print(OUT_FIG)

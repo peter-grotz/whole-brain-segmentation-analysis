@@ -14,8 +14,10 @@ from matplotlib.collections import LineCollection
 from figure_config import RUN_DIR, OUT_DIR
 
 
-OUT_PATH = OUT_DIR / "794495_900k_visual_table.png"
-CSV_PATH = OUT_DIR / "794495_900k_visual_table_order.csv"
+from figure_config import out_path, neuron_label, SAMPLE, CHECKPOINT, apply_house_style
+apply_house_style()
+OUT_PATH = out_path("visual_table.png")
+CSV_PATH = out_path("visual_table_order.csv")
 VOXEL_SCALE_XY = 0.748
 
 
@@ -146,7 +148,7 @@ def main() -> None:
         ax.set_yticks([0, 0.5, 1.0] if col == 0 else [])
         if col == 0:
             ax.set_ylabel("Prop.")
-        ax.set_title(neuron.replace("-794495-", "\n"), fontsize=9)
+        ax.set_title(neuron_label(neuron), fontsize=9)
         ax.text(0, max(row["correct_proportion"] - 0.045, 0.02), f"{row['correct_proportion']:.2f}", ha="center", va="top", color="white", fontsize=8, fontweight="bold")
         ax.text(0, row["correct_proportion"] + row["omit_proportion"] + 0.015, f"{row['omit_proportion']:.2f}", ha="center", va="bottom", color="#b22222", fontsize=8, fontweight="bold")
         for spine in ("top", "right", "bottom"):
@@ -239,7 +241,7 @@ def main() -> None:
             ax.spines[spine].set_visible(False)
         ax.grid(axis="y", alpha=0.15, linewidth=0.4)
 
-    fig.suptitle("794495 900k checkpoint: per-neuron omit/recall, geometry, intensities, fragment lengths, and merge-length proxy", fontsize=18)
+    fig.suptitle(f"{SAMPLE} {CHECKPOINT}: per-neuron omit/recall, geometry, intensities, fragment lengths, and merge-length proxy", fontsize=18)
     fig.savefig(OUT_PATH, dpi=220, bbox_inches="tight", facecolor="white")
     plt.close(fig)
 

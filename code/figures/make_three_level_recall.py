@@ -41,22 +41,16 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib import font_manager, rcParams
 from matplotlib.patches import Patch
 
-from figure_config import RUN_DIR, OUT_DIR
+from figure_config import (RUN_DIR, OUT_DIR, VOXEL_SIZE, SKELETON_TOL_UM,
+                           BINARY_MASK, apply_house_style)
 
 BIN, FFN, SKEL = "#6660e5", "#7cbf4d", "#16a8a4"
 GT_C, MERGED, OMIT = "#9a94ff", "#d81168", "#cd0f55"
-HEAD_FONT_PATH = Path("/Library/Fonts/Managed/AllenInstitutePlusHead-Rg_357723850.otf")
-if HEAD_FONT_PATH.exists():
-    font_manager.fontManager.addfont(str(HEAD_FONT_PATH))
-    rcParams["font.family"] = font_manager.FontProperties(fname=str(HEAD_FONT_PATH)).get_name()
-
-VOX = np.array([float(x) for x in
-                os.environ.get("FIGURE_VOXEL_SIZE", "0.748,0.748,1.0").split(",")])
-TOL_UM = float(os.environ.get("FIGURE_SKELETON_TOL_UM", "5"))
-BINARY_MASK = os.environ.get("FIGURE_BINARY_MASK", "").strip()
+apply_house_style()
+VOX = VOXEL_SIZE
+TOL_UM = SKELETON_TOL_UM
 
 
 def load_swc(path: Path):

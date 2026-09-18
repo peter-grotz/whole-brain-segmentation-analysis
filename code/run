@@ -80,9 +80,9 @@ generate_figures() {
     # export FIGURE_MERGE_DIR="/data/.../errors"
 
     local figure_scripts=(
-        make_794495_900k_visual_table.py
-        make_794495_900k_visual_table_compact.py
-        make_794495_900k_summary_panels.py
+        make_visual_table.py
+        make_visual_table_compact.py
+        make_summary_panels.py
         make_omit_gap_characterization.py
         make_three_level_recall.py
     )

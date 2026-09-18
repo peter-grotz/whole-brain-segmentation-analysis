@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from matplotlib import font_manager, rcParams
 
-from make_794495_900k_visual_table import (
+from make_visual_table import (
     RUN_DIR,
     VOXEL_SCALE_XY,
     add_segments,
@@ -19,14 +19,13 @@ from make_794495_900k_visual_table import (
 )
 
 
-from figure_config import OUT_DIR
+from figure_config import OUT_DIR, out_path, apply_house_style
 
-OUT_PATH = OUT_DIR / "794495_900k_visual_table_compact.png"
-CSV_PATH = OUT_DIR / "794495_900k_visual_table_compact_order.csv"
+OUT_PATH = out_path("visual_table_compact.png")
+CSV_PATH = out_path("visual_table_compact_order.csv")
 GT_COLOR = "#6660e5"
 VIOLIN_COLOR = "#16a8a4"
 MERGE_COLOR = "#d81168"
-HEAD_FONT_PATH = Path("/Library/Fonts/Managed/AllenInstitutePlusHead-Rg_357723850.otf")
 PREDICTED_PALETTE = [
     "#8b46d8",  # purple
     "#16a8a4",  # teal
@@ -35,9 +34,7 @@ PREDICTED_PALETTE = [
     "#9a9a9a",  # lighter gray
 ]
 
-if HEAD_FONT_PATH.exists():
-    font_manager.fontManager.addfont(str(HEAD_FONT_PATH))
-    rcParams["font.family"] = font_manager.FontProperties(fname=str(HEAD_FONT_PATH)).get_name()
+apply_house_style()
 
 
 def format_neuron_header(neuron: str) -> str:
