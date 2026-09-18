@@ -39,19 +39,13 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import font_manager, rcParams
 from matplotlib.patches import Patch
 
-from figure_config import RUN_DIR, OUT_DIR
+from figure_config import RUN_DIR, OUT_DIR, VOXEL_SIZE, apply_house_style
 
 ENDPT, GAP = "#16a8a4", "#7cbf4d"
-HEAD_FONT_PATH = Path("/Library/Fonts/Managed/AllenInstitutePlusHead-Rg_357723850.otf")
-if HEAD_FONT_PATH.exists():
-    font_manager.fontManager.addfont(str(HEAD_FONT_PATH))
-    rcParams["font.family"] = font_manager.FontProperties(fname=str(HEAD_FONT_PATH)).get_name()
-
-VOX = np.array([float(x) for x in
-                os.environ.get("FIGURE_VOXEL_SIZE", "0.748,0.748,1.0").split(",")])
+apply_house_style()
+VOX = VOXEL_SIZE
 
 
 def load_swc(path: Path):
