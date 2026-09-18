@@ -73,6 +73,7 @@ generate_figures() {
     export FIGURE_RUN_DIR="/results"
     export FIGURE_OUT_DIR="/results/figures"
     export FIGURE_VOXEL_SIZE="$1"
+    export FIGURE_BINARY_MASK="${2:-}"
     export PYTHONPATH="/code/figures${PYTHONPATH:+:$PYTHONPATH}"
     # Optional: point at a merge-detection eval "errors" dir to fill the
     # merge-events panel of the summary figure (left as "n/a" if unset).
@@ -83,6 +84,7 @@ generate_figures() {
         make_794495_900k_visual_table_compact.py
         make_794495_900k_summary_panels.py
         make_omit_gap_characterization.py
+        make_three_level_recall.py
     )
     set +e
     for s in "${figure_scripts[@]}"; do
@@ -188,6 +190,6 @@ python /code/jvm_repos.py neuron_tracing_utils.analysis.get_error_components --l
 python /code/jvm_repos.py neuron_tracing_utils.analysis.make_merged_length_table --seg-components-dir "/results/predicted-components" --error-swc-dir "/results/partitioned-swcs" --csv-path "/results/merged-length.csv"
 
 compute_misalignment "$1" "$4"
-generate_figures "$4"
+generate_figures "$4" "${7:-}"
 generate_ng_skeletons "$4" "$5"
 upload_results
